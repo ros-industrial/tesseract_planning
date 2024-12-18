@@ -170,7 +170,7 @@ std::unique_ptr<TaskComposerNodeInfo> DiscreteContactCheckTask::runImpl(TaskComp
       const auto& contact_map = contacts[i];
       if (!contact_map.empty())
       {
-        ss << contact_map.getCollisionSummary() << "\n";
+        ss << contact_map.getSummary() << "\n";
       }
     }
     info->status_message = ss.str();
