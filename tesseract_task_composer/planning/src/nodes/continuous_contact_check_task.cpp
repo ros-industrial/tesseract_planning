@@ -174,7 +174,7 @@ ContinuousContactCheckTask::runImpl(TaskComposerContext& context, OptionalTaskCo
       const auto& contact_map = contacts[i];
       if (!contact_map.empty())
       {
-        ss << contact_map.getCollisionSummary().str() << "\n";
+        ss << contact_map.getCollisionSummary() << "\n";
       }
     }
     info->status_message = ss.str();
