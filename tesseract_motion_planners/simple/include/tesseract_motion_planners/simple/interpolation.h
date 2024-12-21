@@ -47,10 +47,6 @@ namespace tesseract_planning
 struct JointGroupInstructionInfo
 {
   JointGroupInstructionInfo(const MoveInstructionPoly& plan_instruction,
-                            const PlannerRequest& request,
-                            const tesseract_common::ManipulatorInfo& manip_info);
-
-  JointGroupInstructionInfo(const MoveInstructionPoly& plan_instruction,
                             const tesseract_environment::Environment& env,
                             const tesseract_common::ManipulatorInfo& manip_info);
 
@@ -101,10 +97,6 @@ struct JointGroupInstructionInfo
 /** @brief The Kinematic Group Instruction Information struct */
 struct KinematicGroupInstructionInfo
 {
-  KinematicGroupInstructionInfo(const MoveInstructionPoly& plan_instruction,
-                                const PlannerRequest& request,
-                                const tesseract_common::ManipulatorInfo& manip_info);
-
   KinematicGroupInstructionInfo(const MoveInstructionPoly& plan_instruction,
                                 const tesseract_environment::Environment& env,
                                 const tesseract_common::ManipulatorInfo& manip_info);
@@ -515,7 +507,6 @@ std::array<Eigen::VectorXd, 2> getClosestJointSolution(const KinematicGroupInstr
 
 /** @brief Provided for backwards compatibility */
 CompositeInstruction generateInterpolatedProgram(const CompositeInstruction& instructions,
-                                                 const tesseract_scene_graph::SceneState& current_state,
                                                  const std::shared_ptr<const tesseract_environment::Environment>& env,
                                                  double state_longest_valid_segment_length = 5 * M_PI / 180,
                                                  double translation_longest_valid_segment_length = 0.15,
