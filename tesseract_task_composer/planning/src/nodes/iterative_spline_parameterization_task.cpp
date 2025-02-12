@@ -170,6 +170,8 @@ TaskComposerNodeInfo IterativeSplineParameterizationTask::runImpl(TaskComposerCo
                                                  cur_composite_profile->max_acceleration_scaling_factor;
   Eigen::VectorXd jerk_scaling_factors = Eigen::VectorXd::Ones(static_cast<Eigen::Index>(flattened.size()));
 
+  const auto minimum_time_delta = cur_composite_profile->minimum_time_delta;
+
   // Loop over all MoveInstructions
   for (Eigen::Index idx = 0; idx < static_cast<Eigen::Index>(flattened.size()); idx++)
   {
@@ -195,7 +197,8 @@ TaskComposerNodeInfo IterativeSplineParameterizationTask::runImpl(TaskComposerCo
                        limits.jerk_limits,
                        velocity_scaling_factors,
                        acceleration_scaling_factors,
-                       jerk_scaling_factors))
+                       jerk_scaling_factors,
+                       minimum_time_delta))
   {
     // If the output key is not the same as the input key the output data should be assigned the input data for error
     // branching
