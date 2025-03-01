@@ -33,6 +33,8 @@
 #include <tesseract_command_language/state_waypoint.h>
 #include <tesseract_command_language/constants.h>
 
+#include <tesseract_common/manipulator_info.h>
+
 namespace tesseract_planning::test_suite
 {
 namespace details
@@ -478,13 +480,13 @@ void runMoveInstructionSettersTest()
   EXPECT_TRUE(instr.getParentUUID().is_nil());
 
   StateWaypoint test_swp(jn, 5 * jv);
-  instr.assignStateWaypoint(test_swp);
+  instr.getWaypoint() = StateWaypointPoly(test_swp);
   EXPECT_EQ(instr.getWaypoint().as<StateWaypointPoly>().as<StateWaypoint>(), test_swp);
 
-  instr.assignJointWaypoint(jwp);
+  instr.getWaypoint() = JointWaypointPoly(jwp);
   EXPECT_EQ(instr.getWaypoint().as<JointWaypointPoly>().as<JointWaypoint>(), jwp.as<JointWaypoint>());
 
-  instr.assignCartesianWaypoint(cwp);
+  instr.getWaypoint() = CartesianWaypointPoly(cwp);
   EXPECT_EQ(instr.getWaypoint().as<CartesianWaypointPoly>().as<CartesianWaypoint>(), cwp.as<CartesianWaypoint>());
 
   instr.setMoveType(MoveInstructionType::LINEAR);
@@ -562,7 +564,7 @@ void runMoveInstructionSettersTest()
 template <typename T>
 void runMoveInstructionTest()
 {
-  runInstructionInterfaceTest<T>();
+  runInstructionInterfaceTest(MoveInstructionPoly(T()));
 
   details::runMoveInstructionInterfaceTest<T>();
   details::runMoveInstructionConstructorTest<T>();

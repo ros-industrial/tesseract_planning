@@ -34,6 +34,10 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
 #include <tesseract_common/joint_state.h>
 #include <tesseract_command_language/poly/move_instruction_poly.h>
+#include <tesseract_command_language/poly/waypoint_poly.h>
+#include <tesseract_command_language/poly/cartesian_waypoint_poly.h>
+#include <tesseract_command_language/poly/joint_waypoint_poly.h>
+#include <tesseract_command_language/poly/state_waypoint_poly.h>
 
 namespace tesseract_planning
 {
@@ -105,7 +109,7 @@ void MotionPlanner::assignSolution(MoveInstructionPoly& mi,
   StateWaypointPoly swp = mi.createStateWaypoint();
   swp.setNames(joint_names);
   swp.setPosition(joint_values);
-  mi.assignStateWaypoint(swp);
+  mi.getWaypoint() = swp;
 }
 
 }  // namespace tesseract_planning

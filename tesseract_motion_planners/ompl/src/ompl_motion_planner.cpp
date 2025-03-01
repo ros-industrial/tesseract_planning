@@ -48,7 +48,12 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 #include <tesseract_kinematics/core/kinematic_group.h>
 #include <tesseract_collision/core/discrete_contact_manager.h>
 #include <tesseract_environment/environment.h>
+
 #include <tesseract_command_language/poly/move_instruction_poly.h>
+#include <tesseract_command_language/poly/waypoint_poly.h>
+#include <tesseract_command_language/poly/cartesian_waypoint_poly.h>
+#include <tesseract_command_language/poly/joint_waypoint_poly.h>
+#include <tesseract_command_language/poly/state_waypoint_poly.h>
 #include <tesseract_command_language/utils.h>
 
 constexpr auto SOLUTION_FOUND{ "Found valid solution" };
@@ -219,14 +224,14 @@ long OMPLMotionPlanner::assignTrajectory(tesseract_planning::CompositeInstructio
             jwp.setIsConstrained(false);
             jwp.setNames(joint_names);
             jwp.setPosition(traj.row(row));
-            child.assignJointWaypoint(jwp);
+            child.getWaypoint() = jwp;
           }
           else
           {
             StateWaypointPoly swp = mi.createStateWaypoint();
             swp.setNames(joint_names);
             swp.setPosition(traj.row(row));
-            child.assignStateWaypoint(swp);
+            child.getWaypoint() = swp;
           }
 
           extra.emplace_back(child);

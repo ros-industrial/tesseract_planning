@@ -36,44 +36,70 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
 namespace tesseract_planning
 {
-class SetToolInstruction
+class SetToolInstruction final : public InstructionInterface
 {
 public:
   SetToolInstruction() = default;  // Required for boost serialization do not use
   SetToolInstruction(int tool_id);
 
-  const boost::uuids::uuid& getUUID() const;
-  void setUUID(const boost::uuids::uuid& uuid);
-  void regenerateUUID();
+  // Instruction
 
-  const boost::uuids::uuid& getParentUUID() const;
-  void setParentUUID(const boost::uuids::uuid& uuid);
+  /**
+   * @brief Get the UUID
+   * @return The UUID
+   */
+  const boost::uuids::uuid& getUUID() const override final;
+  /**
+   * @brief Set the UUID
+   * @param uuid The UUID
+   */
+  void setUUID(const boost::uuids::uuid& uuid) override final;
+  /**
+   * @brief Regenerate the UUID
+   */
+  void regenerateUUID() override final;
 
-  const std::string& getDescription() const;
+  /**
+   * @brief Get the parent UUID
+   * @return The parent UUID
+   */
+  const boost::uuids::uuid& getParentUUID() const override final;
+  /**
+   * @brief Set the parent UUID
+   * @param uuid The parent UUID
+   */
+  void setParentUUID(const boost::uuids::uuid& uuid) override final;
 
-  void setDescription(const std::string& description);
+  /**
+   * @brief Get the description
+   * @return The description
+   */
+  const std::string& getDescription() const override final;
+  /**
+   * @brief Set the description
+   * @param description The description
+   */
+  void setDescription(const std::string& description) override final;
 
-  void print(const std::string& prefix = "") const;  // NOLINT
+  /**
+   * @brief Output the contents to std::cout
+   * @param prefix The prefix to add to each variable
+   */
+  void print(const std::string& prefix = "") const override final;  // NOLINT
+
+  /**
+   * @brief Make a deep copy of the object
+   * @return A deep copy
+   */
+  std::unique_ptr<InstructionInterface> clone() const override final;
+
+  // SetToolInstruction
 
   /**
    * @brief Get the tool ID
    * @return The tool ID
    */
   int getTool() const;
-
-  /**
-   * @brief Equal operator. Does not compare descriptions
-   * @param rhs SetToolInstruction
-   * @return True if equal, otherwise false
-   */
-  bool operator==(const SetToolInstruction& rhs) const;
-
-  /**
-   * @brief Not equal operator. Does not compare descriptions
-   * @param rhs SetToolInstruction
-   * @return True if not equal, otherwise false
-   */
-  bool operator!=(const SetToolInstruction& rhs) const;
 
 private:
   /** @brief The instructions UUID */
@@ -85,12 +111,20 @@ private:
   /** @brief The tool ID */
   int tool_id_{ -1 };
 
+  /**
+   * @brief Check if two objects are equal
+   * @param other The other object to compare with
+   * @return True if equal, otherwise false
+   */
+  bool equals(const InstructionInterface& other) const override final;
+
   friend class boost::serialization::access;
   template <class Archive>
   void serialize(Archive& ar, const unsigned int version);  // NOLINT
 };
 }  // namespace tesseract_planning
 
-TESSERACT_INSTRUCTION_EXPORT_KEY(tesseract_planning, SetToolInstruction)
+BOOST_CLASS_EXPORT_KEY(tesseract_planning::SetToolInstruction)
+BOOST_CLASS_TRACKING(tesseract_planning::SetToolInstruction, boost::serialization::track_never)
 
 #endif  // TESSERACT_COMMAND_LANGUAGE_SET_TOOL_INSTRUCTION_H

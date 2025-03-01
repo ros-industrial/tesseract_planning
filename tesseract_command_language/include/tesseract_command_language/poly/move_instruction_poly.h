@@ -32,50 +32,18 @@ TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <cstdint>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/export.hpp>
-#include <boost/serialization/base_object.hpp>
-#include <boost/concept_check.hpp>
 TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
 #include <tesseract_command_language/poly/instruction_poly.h>
-#include <tesseract_command_language/poly/cartesian_waypoint_poly.h>
-#include <tesseract_command_language/poly/joint_waypoint_poly.h>
-#include <tesseract_command_language/poly/state_waypoint_poly.h>
-#include <tesseract_command_language/poly/waypoint_poly.h>
 #include <tesseract_command_language/types.h>
-#include <tesseract_common/manipulator_info.h>
-#include <tesseract_common/type_erasure.h>
 #include <tesseract_common/fwd.h>
-
-/** @brief If shared library, this must go in the header after the class definition */
-#define TESSERACT_MOVE_INSTRUCTION_EXPORT_KEY(N, C)                                                                    \
-  namespace N                                                                                                          \
-  {                                                                                                                    \
-  using C##InstanceBase =                                                                                              \
-      tesseract_common::TypeErasureInstance<C, tesseract_planning::detail_move_instruction::MoveInstructionInterface>; \
-  using C##Instance = tesseract_planning::detail_move_instruction::MoveInstructionInstance<C>;                         \
-  }                                                                                                                    \
-  BOOST_CLASS_EXPORT_KEY(N::C##InstanceBase)                                                                           \
-  BOOST_CLASS_EXPORT_KEY(N::C##Instance)                                                                               \
-  BOOST_CLASS_TRACKING(N::C##InstanceBase, boost::serialization::track_never)                                          \
-  BOOST_CLASS_TRACKING(N::C##Instance, boost::serialization::track_never)
-
-/** @brief If shared library, this must go in the cpp after the implicit instantiation of the serialize function */
-#define TESSERACT_MOVE_INSTRUCTION_EXPORT_IMPLEMENT(inst)                                                              \
-  BOOST_CLASS_EXPORT_IMPLEMENT(inst##InstanceBase)                                                                     \
-  BOOST_CLASS_EXPORT_IMPLEMENT(inst##Instance)
-
-/**
- * @brief This should not be used within shared libraries use the two above.
- * If not in a shared library it can go in header or cpp
- */
-#define TESSERACT_MOVE_INSTRUCTION_EXPORT(N, C)                                                                        \
-  TESSERACT_MOVE_INSTRUCTION_EXPORT_KEY(N, C)                                                                          \
-  TESSERACT_MOVE_INSTRUCTION_EXPORT_IMPLEMENT(N::C)
 
 namespace tesseract_planning
 {
-struct MoveInstructionPoly;
-class ProfileDictionary;
+class WaypointPoly;
+class CartesianWaypointPoly;
+class JointWaypointPoly;
+class StateWaypointPoly;
 
 enum class MoveInstructionType : std::uint8_t
 {
@@ -83,127 +51,172 @@ enum class MoveInstructionType : std::uint8_t
   FREESPACE = 1,
   CIRCULAR = 2,
 };
-}  // namespace tesseract_planning
 
-namespace tesseract_planning::detail_move_instruction
+class MoveInstructionInterface
 {
-template <typename T>
-struct MoveInstructionConcept  // NOLINT
-  : boost::Assignable<T>,
-    boost::CopyConstructible<T>,
-    boost::EqualityComparable<T>
-{
-  BOOST_CONCEPT_USAGE(MoveInstructionConcept)
-  {
-    T cp(c);
-    T assign = c;
-    bool eq = (c == cp);
-    bool neq = (c != cp);
-    UNUSED(assign);
-    UNUSED(eq);
-    UNUSED(neq);
+public:
+  virtual ~MoveInstructionInterface() = default;
 
-    const auto& uuid = c.getUUID();
+  //////////////
+  // Instruction
+  //////////////
 
-    c.setUUID(uuid);
-    c.regenerateUUID();
-    c.setParentUUID(uuid);
-
-    const auto& parent_uuid = c.getParentUUID();
-    UNUSED(parent_uuid);
-
-    tesseract_common::ManipulatorInfo info;
-    c.setManipulatorInfo(info);
-
-    tesseract_common::ManipulatorInfo& info_ref = c.getManipulatorInfo();
-    UNUSED(info_ref);
-
-    const tesseract_common::ManipulatorInfo& info_const_ref = c.getManipulatorInfo();
-    UNUSED(info_const_ref);
-
-    c.setProfile("profile");
-    const std::string& profile_const = c.getProfile();
-    UNUSED(profile_const);
-
-    c.setPathProfile("path_profile");
-    const std::string& path_profile_const = c.getPathProfile();
-    UNUSED(path_profile_const);
-
-    c.setProfileOverrides(ProfileOverrides{});
-    auto profile_overrides = c.getProfileOverrides();
-    UNUSED(profile_overrides);
-
-    c.setPathProfileOverrides(ProfileOverrides{});
-    auto path_profile_overrides = c.getPathProfileOverrides();
-    UNUSED(path_profile_overrides);
-
-    c.setMoveType(MoveInstructionType::FREESPACE);
-    MoveInstructionType type = c.getMoveType();
-    UNUSED(type);
-
-    const std::string& desc = c.getDescription();
-    UNUSED(desc);
-
-    auto cwp = c.createCartesianWaypoint();
-    UNUSED(cwp);
-
-    auto jwp = c.createJointWaypoint();
-    UNUSED(jwp);
-
-    auto swp = c.createStateWaypoint();
-    UNUSED(swp);
-
-    c.setDescription("test");
-    c.print();
-    c.print("prefix_");
-  }
-
-private:
-  T c;
-};
-
-struct MoveInstructionInterface : tesseract_common::TypeErasureInterface
-{
+  /**
+   * @brief Get the UUID
+   * @return The UUID
+   */
   virtual const boost::uuids::uuid& getUUID() const = 0;
+  /**
+   * @brief Set the UUID
+   * @param uuid The UUID
+   */
   virtual void setUUID(const boost::uuids::uuid& uuid) = 0;
+  /**
+   * @brief Regenerate the UUID
+   */
   virtual void regenerateUUID() = 0;
 
+  /**
+   * @brief Get the parent UUID
+   * @return The parent UUID
+   */
   virtual const boost::uuids::uuid& getParentUUID() const = 0;
+  /**
+   * @brief Set the parent UUID
+   * @param uuid The parent UUID
+   */
   virtual void setParentUUID(const boost::uuids::uuid& uuid) = 0;
 
-  virtual void assignCartesianWaypoint(CartesianWaypointPoly waypoint) = 0;
-  virtual void assignJointWaypoint(JointWaypointPoly waypoint) = 0;
-  virtual void assignStateWaypoint(StateWaypointPoly waypoint) = 0;
+  /**
+   * @brief Get the description
+   * @return The description
+   */
+  virtual const std::string& getDescription() const = 0;
+  /**
+   * @brief Set the description
+   * @param description The description
+   */
+  virtual void setDescription(const std::string& description) = 0;
+
+  /**
+   * @brief Output the contents to std::cout
+   * @param prefix The prefix to add to each variable
+   */
+  virtual void print(const std::string& prefix) const = 0;
+
+  /**
+   * @brief Make a deep copy of the object
+   * @return A deep copy
+   */
+  virtual std::unique_ptr<MoveInstructionInterface> clone() const = 0;
+
+  ///////////////////
+  // Move Instruction
+  ///////////////////
+
+  /**
+   * @brief Get the waypoint
+   * @return The waypoint
+   */
   virtual WaypointPoly& getWaypoint() = 0;
   virtual const WaypointPoly& getWaypoint() const = 0;
 
+  /**
+   * @brief Set the manipulator information
+   * @param info The manipulator information
+   */
   virtual void setManipulatorInfo(tesseract_common::ManipulatorInfo info) = 0;
+  /**
+   * @brief Get the manipulator information
+   * @return The manipulator information
+   */
   virtual const tesseract_common::ManipulatorInfo& getManipulatorInfo() const = 0;
   virtual tesseract_common::ManipulatorInfo& getManipulatorInfo() = 0;
 
+  /**
+   * @brief Set the waypoint profile
+   * @param profile The waypoint profile
+   */
   virtual void setProfile(const std::string& profile) = 0;
+  /**
+   * @brief Get the waypoint profile
+   * @param ns The namepace to lookup profile
+   * @return The profile associated with the namespace
+   */
   virtual const std::string& getProfile(const std::string& ns = "") const = 0;
 
+  /**
+   * @brief Set the waypoint path profile
+   * @param profile The waypoint path profile
+   */
   virtual void setPathProfile(const std::string& profile) = 0;
+  /**
+   * @brief Get the waypoint path profile
+   * @param ns The namepace to lookup profile
+   * @return The path profile associated with the namespace
+   */
   virtual const std::string& getPathProfile(const std::string& ns = "") const = 0;
 
+  /**
+   * @brief Set the profile overrides
+   * @param profile_overrides The profile overrides
+   */
   virtual void setProfileOverrides(ProfileOverrides profile_overrides) = 0;
+  /**
+   * @brief Get the profile overrides
+   * @return The profile overrides
+   */
   virtual const ProfileOverrides& getProfileOverrides() const = 0;
 
+  /**
+   * @brief Set the path profile overrides
+   * @param profile_overrides The path profile overrides
+   */
   virtual void setPathProfileOverrides(ProfileOverrides profile_overrides) = 0;
+  /**
+   * @brief Get the path profile overrides
+   * @return The path profile overrides
+   */
   virtual const ProfileOverrides& getPathProfileOverrides() const = 0;
 
+  /**
+   * @brief Set the move type
+   * @param move_type The move type
+   */
   virtual void setMoveType(MoveInstructionType move_type) = 0;
+  /**
+   * @brief Get the move type
+   * @return The move type
+   */
   virtual MoveInstructionType getMoveType() const = 0;
 
-  virtual const std::string& getDescription() const = 0;
-  virtual void setDescription(const std::string& description) = 0;
-
-  virtual void print(const std::string& prefix) const = 0;
-
+  /**
+   * @brief Create cartesian waypoint poly
+   * @return A cartesian waypoint poly
+   */
   virtual CartesianWaypointPoly createCartesianWaypoint() const = 0;
+  /**
+   * @brief Create joint waypoint poly
+   * @return A joint waypoint poly
+   */
   virtual JointWaypointPoly createJointWaypoint() const = 0;
+  /**
+   * @brief Create state waypoint poly
+   * @return A state waypoint poly
+   */
   virtual StateWaypointPoly createStateWaypoint() const = 0;
+
+  // Operators
+  bool operator==(const MoveInstructionInterface& rhs) const;
+  bool operator!=(const MoveInstructionInterface& rhs) const;
+
+protected:
+  /**
+   * @brief Check if two objects are equal
+   * @param other The other object to compare with
+   * @return True if equal, otherwise false
+   */
+  virtual bool equals(const MoveInstructionInterface& other) const = 0;
 
 private:
   friend class boost::serialization::access;
@@ -212,166 +225,267 @@ private:
   void serialize(Archive& ar, const unsigned int version);  // NOLINT
 };
 
-template <typename T>
-struct MoveInstructionInstance : tesseract_common::TypeErasureInstance<T, MoveInstructionInterface>  // NOLINT
+class MoveInstructionPoly final : public InstructionInterface
 {
-  using BaseType = tesseract_common::TypeErasureInstance<T, MoveInstructionInterface>;
-  MoveInstructionInstance() = default;
-  MoveInstructionInstance(const T& x) : BaseType(x) {}
-  MoveInstructionInstance(MoveInstructionInstance&& x) noexcept : BaseType(std::move(x)) {}
+public:
+  MoveInstructionPoly() = default;  // Default constructor
+  MoveInstructionPoly(const MoveInstructionPoly& other);
+  MoveInstructionPoly& operator=(const MoveInstructionPoly& other);
+  MoveInstructionPoly(MoveInstructionPoly&& other) noexcept = default;
+  MoveInstructionPoly& operator=(MoveInstructionPoly&& other) noexcept = default;
+  MoveInstructionPoly(const MoveInstructionInterface& impl);
 
-  BOOST_CONCEPT_ASSERT((MoveInstructionConcept<T>));
+  //////////////
+  // Instruction
+  //////////////
 
-  const boost::uuids::uuid& getUUID() const final { return this->get().getUUID(); }
-  void setUUID(const boost::uuids::uuid& uuid) final { this->get().setUUID(uuid); }
-  void regenerateUUID() final { this->get().regenerateUUID(); }
+  /**
+   * @brief Get the UUID
+   * @return The UUID
+   */
+  const boost::uuids::uuid& getUUID() const final override;
+  /**
+   * @brief Set the UUID
+   * @param uuid The UUID
+   */
+  void setUUID(const boost::uuids::uuid& uuid) final override;
+  /**
+   * @brief Regenerate the UUID
+   */
+  void regenerateUUID() final override;
 
-  const boost::uuids::uuid& getParentUUID() const final { return this->get().getParentUUID(); }
-  void setParentUUID(const boost::uuids::uuid& uuid) final { this->get().setParentUUID(uuid); }
+  /**
+   * @brief Get the parent UUID
+   * @return The parent UUID
+   */
+  const boost::uuids::uuid& getParentUUID() const final override;
+  /**
+   * @brief Set the parent UUID
+   * @param uuid The parent UUID
+   */
+  void setParentUUID(const boost::uuids::uuid& uuid) final override;
 
-  void assignCartesianWaypoint(CartesianWaypointPoly waypoint) final
-  {
-    this->get().assignCartesianWaypoint(std::move(waypoint));
-  }
-  void assignJointWaypoint(JointWaypointPoly waypoint) final { this->get().assignJointWaypoint(std::move(waypoint)); }
-  void assignStateWaypoint(StateWaypointPoly waypoint) final { this->get().assignStateWaypoint(std::move(waypoint)); }
-  WaypointPoly& getWaypoint() final { return this->get().getWaypoint(); }
-  const WaypointPoly& getWaypoint() const final { return this->get().getWaypoint(); }
+  /**
+   * @brief Get the description
+   * @return The description
+   */
+  const std::string& getDescription() const final override;
+  /**
+   * @brief Set the description
+   * @param description The description
+   */
+  void setDescription(const std::string& description) final override;
 
-  void setManipulatorInfo(tesseract_common::ManipulatorInfo info) final
-  {
-    this->get().setManipulatorInfo(std::move(info));
-  }
-  const tesseract_common::ManipulatorInfo& getManipulatorInfo() const final { return this->get().getManipulatorInfo(); }
-  tesseract_common::ManipulatorInfo& getManipulatorInfo() final { return this->get().getManipulatorInfo(); }
+  /**
+   * @brief Output the contents to std::cout
+   * @param prefix The prefix to add to each variable
+   */
+  void print(const std::string& prefix = "") const final override;
 
-  void setProfile(const std::string& profile) final { this->get().setProfile(profile); }
-  const std::string& getProfile(const std::string& ns = "") const final { return this->get().getProfile(ns); }
+  /**
+   * @brief Make a deep copy of the object
+   * @return A deep copy
+   */
+  std::unique_ptr<InstructionInterface> clone() const override final;
 
-  void setPathProfile(const std::string& profile) final { this->get().setPathProfile(profile); }
-  const std::string& getPathProfile(const std::string& ns = "") const final { return this->get().getPathProfile(ns); }
+  ///////////////////
+  // Move Instruction
+  ///////////////////
 
-  void setProfileOverrides(ProfileOverrides profile_overrides) final
-  {
-    this->get().setProfileOverrides(std::move(profile_overrides));
-  }
-  const ProfileOverrides& getProfileOverrides() const final { return this->get().getProfileOverrides(); }
-
-  void setPathProfileOverrides(ProfileOverrides profile_overrides) final
-  {
-    this->get().setPathProfileOverrides(std::move(profile_overrides));
-  }
-  const ProfileOverrides& getPathProfileOverrides() const final { return this->get().getPathProfileOverrides(); }
-
-  void setMoveType(MoveInstructionType move_type) final { this->get().setMoveType(move_type); }
-  MoveInstructionType getMoveType() const final { return this->get().getMoveType(); }
-
-  const std::string& getDescription() const final { return this->get().getDescription(); }
-  void setDescription(const std::string& description) final { this->get().setDescription(description); }
-
-  void print(const std::string& prefix) const final { this->get().print(prefix); }
-
-  CartesianWaypointPoly createCartesianWaypoint() const final { return this->get().createCartesianWaypoint(); }
-  JointWaypointPoly createJointWaypoint() const final { return this->get().createJointWaypoint(); }
-  StateWaypointPoly createStateWaypoint() const final { return this->get().createStateWaypoint(); }
-
-  std::unique_ptr<tesseract_common::TypeErasureInterface> clone() const final
-  {
-    return std::make_unique<MoveInstructionInstance<T>>(this->get());
-  }
-
-private:
-  friend class boost::serialization::access;
-  friend struct tesseract_common::Serialization;
-  template <class Archive>
-  void serialize(Archive& ar, const unsigned int /*version*/)  // NOLINT
-  {
-    ar& boost::serialization::make_nvp("base", boost::serialization::base_object<BaseType>(*this));
-  }
-};
-}  // namespace tesseract_planning::detail_move_instruction
-
-namespace tesseract_planning
-{
-using MoveInstructionPolyBase = tesseract_common::TypeErasureBase<detail_move_instruction::MoveInstructionInterface,
-                                                                  detail_move_instruction::MoveInstructionInstance>;
-struct MoveInstructionPoly : MoveInstructionPolyBase
-{
-  using MoveInstructionPolyBase::MoveInstructionPolyBase;
-
-  const boost::uuids::uuid& getUUID() const;
-  void setUUID(const boost::uuids::uuid& uuid);
-  void regenerateUUID();
-
-  const boost::uuids::uuid& getParentUUID() const;
-  void setParentUUID(const boost::uuids::uuid& uuid);
-
-  void assignCartesianWaypoint(CartesianWaypointPoly waypoint);
-  void assignJointWaypoint(JointWaypointPoly waypoint);
-  void assignStateWaypoint(StateWaypointPoly waypoint);
+  /**
+   * @brief Get the waypoint
+   * @return The waypoint
+   */
   WaypointPoly& getWaypoint();
   const WaypointPoly& getWaypoint() const;
 
+  /**
+   * @brief Set the manipulator information
+   * @param info The manipulator information
+   */
   void setManipulatorInfo(tesseract_common::ManipulatorInfo info);
+  /**
+   * @brief Get the manipulator information
+   * @return The manipulator information
+   */
   const tesseract_common::ManipulatorInfo& getManipulatorInfo() const;
   tesseract_common::ManipulatorInfo& getManipulatorInfo();
 
+  /**
+   * @brief Set the waypoint profile
+   * @param profile The waypoint profile
+   */
   void setProfile(const std::string& profile);
+  /**
+   * @brief Get the waypoint profile
+   * @param ns The namepace to lookup profile
+   * @return The profile associated with the namespace
+   */
   const std::string& getProfile(const std::string& ns = "") const;
 
+  /**
+   * @brief Set the waypoint path profile
+   * @param profile The waypoint path profile
+   */
   void setPathProfile(const std::string& profile);
+  /**
+   * @brief Get the waypoint path profile
+   * @param ns The namepace to lookup profile
+   * @return The path profile associated with the namespace
+   */
   const std::string& getPathProfile(const std::string& ns = "") const;
 
+  /**
+   * @brief Set the profile overrides
+   * @param profile_overrides The profile overrides
+   */
   void setProfileOverrides(ProfileOverrides profile_overrides);
+  /**
+   * @brief Get the profile overrides
+   * @return The profile overrides
+   */
   const ProfileOverrides& getProfileOverrides() const;
 
+  /**
+   * @brief Set the path profile overrides
+   * @param profile_overrides The path profile overrides
+   */
   void setPathProfileOverrides(ProfileOverrides profile_overrides);
+  /**
+   * @brief Get the path profile overrides
+   * @return The path profile overrides
+   */
   const ProfileOverrides& getPathProfileOverrides() const;
 
+  /**
+   * @brief Set the move type
+   * @param move_type The move type
+   */
   void setMoveType(MoveInstructionType move_type);
+  /**
+   * @brief Get the move type
+   * @return The move type
+   */
   MoveInstructionType getMoveType() const;
 
-  const std::string& getDescription() const;
-  void setDescription(const std::string& description);
-
-  void print(const std::string& prefix = "") const;
-
+  /**
+   * @brief Create cartesian waypoint poly
+   * @return A cartesian waypoint poly
+   */
   CartesianWaypointPoly createCartesianWaypoint() const;
+  /**
+   * @brief Create joint waypoint poly
+   * @return A joint waypoint poly
+   */
   JointWaypointPoly createJointWaypoint() const;
+  /**
+   * @brief Create state waypoint poly
+   * @return A state waypoint poly
+   */
   StateWaypointPoly createStateWaypoint() const;
 
-  // MoveInstructionPoly methods
+  ///////////////
+  // Poly methods
+  ///////////////
 
+  /**
+   * @brief Get the stored derived type
+   * @return The derived type index
+   */
+  std::type_index getType() const;
+
+  /**
+   * @brief Check if the poly type is null
+   * @return True if null, otherwise false
+   */
+  bool isNull() const;
+
+  /**
+   * @brief Get the move instruction being stored
+   * @return The move instruction
+   * @throws If null
+   */
+  MoveInstructionInterface& getMoveInstruction();
+  const MoveInstructionInterface& getMoveInstruction() const;
+
+  /**
+   * @brief Create child move instruction
+   * @return A child move instruction
+   */
   MoveInstructionPoly createChild() const;
 
+  /**
+   * @brief Check if move type is linear
+   * @return True if move type is linear, otherwise false
+   */
   bool isLinear() const;
 
+  /**
+   * @brief Check if move type is freespace
+   * @return True if move type is freespace, otherwise false
+   */
   bool isFreespace() const;
 
+  /**
+   * @brief Check if move type is circular
+   * @return True if move type is circular, otherwise false
+   */
   bool isCircular() const;
 
+  /**
+   * @brief Check if move instruction is a child
+   * @return True if move instruction is a child, otherwise false
+   */
   bool isChild() const;
 
+  template <typename T>
+  T& as()
+  {
+    if (getType() != typeid(T))
+      throw std::runtime_error("MoveInstructionPoly, tried to cast '" + boost::core::demangle(getType().name()) +
+                               "' to '" + boost::core::demangle(typeid(T).name()) + "'\nBacktrace:\n" +
+                               boost::stacktrace::to_string(boost::stacktrace::stacktrace()) + "\n");
+
+    return *dynamic_cast<T*>(impl_.get());
+  }
+
+  template <typename T>
+  const T& as() const
+  {
+    if (getType() != typeid(T))
+      throw std::runtime_error("MoveInstructionPoly, tried to cast '" + boost::core::demangle(getType().name()) +
+                               "' to '" + boost::core::demangle(typeid(T).name()) + "'\nBacktrace:\n" +
+                               boost::stacktrace::to_string(boost::stacktrace::stacktrace()) + "\n");
+
+    return *dynamic_cast<const T*>(impl_.get());
+  }
+
+  // Operators
+  bool operator==(const MoveInstructionPoly& rhs) const;
+  bool operator!=(const MoveInstructionPoly& rhs) const;
+
 private:
+  std::unique_ptr<MoveInstructionInterface> impl_;
+
+  /**
+   * @brief Check if two objects are equal
+   * @param other The other object to compare with
+   * @return True if equal, otherwise false
+   */
+  bool equals(const InstructionInterface& other) const override final;
+
   friend class boost::serialization::access;
   friend struct tesseract_common::Serialization;
-
   template <class Archive>
   void serialize(Archive& ar, const unsigned int /*version*/);  // NOLINT
 };
 
 }  // namespace tesseract_planning
 
-BOOST_CLASS_EXPORT_KEY(tesseract_planning::detail_move_instruction::MoveInstructionInterface)
-BOOST_CLASS_TRACKING(tesseract_planning::detail_move_instruction::MoveInstructionInterface,
-                     boost::serialization::track_never)
-
-BOOST_CLASS_EXPORT_KEY(tesseract_planning::MoveInstructionPolyBase)
-BOOST_CLASS_TRACKING(tesseract_planning::MoveInstructionPolyBase, boost::serialization::track_never)
+BOOST_CLASS_EXPORT_KEY(tesseract_planning::MoveInstructionInterface)
+BOOST_CLASS_TRACKING(tesseract_planning::MoveInstructionInterface, boost::serialization::track_never)
 
 BOOST_CLASS_EXPORT_KEY(tesseract_planning::MoveInstructionPoly)
 BOOST_CLASS_TRACKING(tesseract_planning::MoveInstructionPoly, boost::serialization::track_never)
-
-TESSERACT_INSTRUCTION_EXPORT_KEY(tesseract_planning, MoveInstructionPoly)
 
 #endif  // TESSERACT_COMMAND_LANGUAGE_MOVE_INSTRUCTION_POLY_H

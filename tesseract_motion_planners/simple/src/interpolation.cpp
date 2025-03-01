@@ -48,6 +48,11 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 #include <tesseract_environment/environment.h>
 
 #include <tesseract_command_language/poly/move_instruction_poly.h>
+#include <tesseract_command_language/poly/waypoint_poly.h>
+#include <tesseract_command_language/poly/cartesian_waypoint_poly.h>
+#include <tesseract_command_language/poly/joint_waypoint_poly.h>
+#include <tesseract_command_language/poly/state_waypoint_poly.h>
+
 #include <tesseract_command_language/profile_dictionary.h>
 #include <tesseract_command_language/utils.h>
 
@@ -1065,7 +1070,7 @@ std::vector<MoveInstructionPoly> getInterpolatedInstructions(const std::vector<s
     jwp.setNames(joint_names);
     jwp.setPosition(states.col(i));
     jwp.setIsConstrained(false);
-    move_instruction.assignJointWaypoint(jwp);
+    move_instruction.getWaypoint() = jwp;
     if (!base_instruction.getPathProfile().empty())
     {
       move_instruction.setProfile(base_instruction.getPathProfile());
@@ -1119,7 +1124,7 @@ std::vector<MoveInstructionPoly> getInterpolatedInstructions(const tesseract_com
       CartesianWaypointPoly cwp = move_instruction.createCartesianWaypoint();
       cwp.setTransform(poses[static_cast<std::size_t>(i)]);
       cwp.setSeed(tesseract_common::JointState(joint_names, states.col(i)));
-      move_instruction.assignCartesianWaypoint(cwp);
+      move_instruction.getWaypoint() = cwp;
       if (!base_instruction.getPathProfile().empty())
       {
         move_instruction.setProfile(base_instruction.getPathProfile());

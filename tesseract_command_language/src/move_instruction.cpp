@@ -42,6 +42,7 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 #include <tesseract_command_language/cartesian_waypoint.h>
 #include <tesseract_command_language/joint_waypoint.h>
 #include <tesseract_command_language/state_waypoint.h>
+#include <tesseract_common/serialization.h>
 
 namespace tesseract_planning
 {
@@ -63,48 +64,6 @@ MoveInstruction::MoveInstruction(WaypointPoly waypoint,
     path_profile_ = profile_;
 }
 
-MoveInstruction::MoveInstruction(CartesianWaypointPoly waypoint,
-                                 MoveInstructionType type,
-                                 std::string profile,
-                                 tesseract_common::ManipulatorInfo manipulator_info)
-  : uuid_(boost::uuids::random_generator()())
-  , move_type_(type)
-  , profile_(std::move(profile))
-  , waypoint_(std::move(waypoint))
-  , manipulator_info_(std::move(manipulator_info))
-{
-  if (move_type_ == MoveInstructionType::LINEAR || move_type_ == MoveInstructionType::CIRCULAR)
-    path_profile_ = profile_;
-}
-
-MoveInstruction::MoveInstruction(JointWaypointPoly waypoint,
-                                 MoveInstructionType type,
-                                 std::string profile,
-                                 tesseract_common::ManipulatorInfo manipulator_info)
-  : uuid_(boost::uuids::random_generator()())
-  , move_type_(type)
-  , profile_(std::move(profile))
-  , waypoint_(std::move(waypoint))
-  , manipulator_info_(std::move(manipulator_info))
-{
-  if (move_type_ == MoveInstructionType::LINEAR || move_type_ == MoveInstructionType::CIRCULAR)
-    path_profile_ = profile_;
-}
-
-MoveInstruction::MoveInstruction(StateWaypointPoly waypoint,
-                                 MoveInstructionType type,
-                                 std::string profile,
-                                 tesseract_common::ManipulatorInfo manipulator_info)
-  : uuid_(boost::uuids::random_generator()())
-  , move_type_(type)
-  , profile_(std::move(profile))
-  , waypoint_(std::move(waypoint))
-  , manipulator_info_(std::move(manipulator_info))
-{
-  if (move_type_ == MoveInstructionType::LINEAR || move_type_ == MoveInstructionType::CIRCULAR)
-    path_profile_ = profile_;
-}
-
 MoveInstruction::MoveInstruction(WaypointPoly waypoint,
                                  MoveInstructionType type,
                                  std::string profile,
@@ -122,48 +81,6 @@ MoveInstruction::MoveInstruction(WaypointPoly waypoint,
                              "and StateWaypointPoly");
 }
 
-MoveInstruction::MoveInstruction(CartesianWaypointPoly waypoint,
-                                 MoveInstructionType type,
-                                 std::string profile,
-                                 std::string path_profile,
-                                 tesseract_common::ManipulatorInfo manipulator_info)
-  : uuid_(boost::uuids::random_generator()())
-  , move_type_(type)
-  , profile_(std::move(profile))
-  , path_profile_(std::move(path_profile))
-  , waypoint_(std::move(waypoint))
-  , manipulator_info_(std::move(manipulator_info))
-{
-}
-
-MoveInstruction::MoveInstruction(JointWaypointPoly waypoint,
-                                 MoveInstructionType type,
-                                 std::string profile,
-                                 std::string path_profile,
-                                 tesseract_common::ManipulatorInfo manipulator_info)
-  : uuid_(boost::uuids::random_generator()())
-  , move_type_(type)
-  , profile_(std::move(profile))
-  , path_profile_(std::move(path_profile))
-  , waypoint_(std::move(waypoint))
-  , manipulator_info_(std::move(manipulator_info))
-{
-}
-
-MoveInstruction::MoveInstruction(StateWaypointPoly waypoint,
-                                 MoveInstructionType type,
-                                 std::string profile,
-                                 std::string path_profile,
-                                 tesseract_common::ManipulatorInfo manipulator_info)
-  : uuid_(boost::uuids::random_generator()())
-  , move_type_(type)
-  , profile_(std::move(profile))
-  , path_profile_(std::move(path_profile))
-  , waypoint_(std::move(waypoint))
-  , manipulator_info_(std::move(manipulator_info))
-{
-}
-
 const boost::uuids::uuid& MoveInstruction::getUUID() const { return uuid_; }
 void MoveInstruction::setUUID(const boost::uuids::uuid& uuid)
 {
@@ -177,13 +94,30 @@ void MoveInstruction::regenerateUUID() { uuid_ = boost::uuids::random_generator(
 const boost::uuids::uuid& MoveInstruction::getParentUUID() const { return parent_uuid_; }
 void MoveInstruction::setParentUUID(const boost::uuids::uuid& uuid) { parent_uuid_ = uuid; }
 
+const std::string& MoveInstruction::getDescription() const { return description_; }
+
+void MoveInstruction::setDescription(const std::string& description) { description_ = description; }
+
+void MoveInstruction::print(const std::string& prefix) const
+{
+  std::cout << prefix + "Move Instruction, Move Type: " << static_cast<int>(move_type_);
+  if (!getWaypoint().isNull())
+  {
+    std::cout << ", ";
+    getWaypoint().print();
+  }
+  std::cout << ", Description: " << getDescription() << "\n";
+}
+
+std::unique_ptr<MoveInstructionInterface> MoveInstruction::clone() const
+{
+  return std::make_unique<MoveInstruction>(*this);
+}
+
 void MoveInstruction::setMoveType(MoveInstructionType move_type) { move_type_ = move_type; }
 
 MoveInstructionType MoveInstruction::getMoveType() const { return move_type_; }
 
-void MoveInstruction::assignCartesianWaypoint(CartesianWaypointPoly waypoint) { waypoint_ = waypoint; }
-void MoveInstruction::assignJointWaypoint(JointWaypointPoly waypoint) { waypoint_ = waypoint; }
-void MoveInstruction::assignStateWaypoint(StateWaypointPoly waypoint) { waypoint_ = waypoint; }
 WaypointPoly& MoveInstruction::getWaypoint() { return waypoint_; }
 const WaypointPoly& MoveInstruction::getWaypoint() const { return waypoint_; }
 
@@ -224,46 +158,33 @@ void MoveInstruction::setPathProfileOverrides(ProfileOverrides profile_overrides
 }
 const ProfileOverrides& MoveInstruction::getPathProfileOverrides() const { return path_profile_overrides_; }
 
-const std::string& MoveInstruction::getDescription() const { return description_; }
+CartesianWaypointPoly MoveInstruction::createCartesianWaypoint() const { return CartesianWaypoint(); }
+JointWaypointPoly MoveInstruction::createJointWaypoint() const { return JointWaypoint(); }
+StateWaypointPoly MoveInstruction::createStateWaypoint() const { return StateWaypoint(); }
 
-void MoveInstruction::setDescription(const std::string& description) { description_ = description; }
-
-void MoveInstruction::print(const std::string& prefix) const
+bool MoveInstruction::equals(const MoveInstructionInterface& other) const
 {
-  std::cout << prefix + "Move Instruction, Move Type: " << static_cast<int>(move_type_);
-  if (!getWaypoint().isNull())
-  {
-    std::cout << ", ";
-    getWaypoint().print();
-  }
-  std::cout << ", Description: " << getDescription() << "\n";
-}
+  const auto* rhs = dynamic_cast<const MoveInstruction*>(&other);
+  if (rhs == nullptr)
+    return false;
 
-CartesianWaypointPoly MoveInstruction::createCartesianWaypoint() { return CartesianWaypoint(); }
-JointWaypointPoly MoveInstruction::createJointWaypoint() { return JointWaypoint(); }
-StateWaypointPoly MoveInstruction::createStateWaypoint() { return StateWaypoint(); }
-
-bool MoveInstruction::operator==(const MoveInstruction& rhs) const
-{
   bool equal = true;
-  equal &= (uuid_ == rhs.uuid_);
-  equal &= (parent_uuid_ == rhs.parent_uuid_);
-  equal &= (static_cast<int>(move_type_) == static_cast<int>(rhs.move_type_));
-  equal &= (profile_ == rhs.profile_);            // NO LINT
-  equal &= (path_profile_ == rhs.path_profile_);  // NO LINT
-  equal &= (profile_overrides_ == rhs.profile_overrides_);
-  equal &= (path_profile_overrides_ == rhs.path_profile_overrides_);
-  equal &= (waypoint_ == rhs.waypoint_);
-  equal &= (manipulator_info_ == rhs.manipulator_info_);
+  equal &= (uuid_ == rhs->uuid_);
+  equal &= (parent_uuid_ == rhs->parent_uuid_);
+  equal &= (static_cast<int>(move_type_) == static_cast<int>(rhs->move_type_));
+  equal &= (profile_ == rhs->profile_);            // NO LINT
+  equal &= (path_profile_ == rhs->path_profile_);  // NO LINT
+  equal &= (profile_overrides_ == rhs->profile_overrides_);
+  equal &= (path_profile_overrides_ == rhs->path_profile_overrides_);
+  equal &= (waypoint_ == rhs->waypoint_);
+  equal &= (manipulator_info_ == rhs->manipulator_info_);
   return equal;
 }
-// LCOV_EXCL_START
-bool MoveInstruction::operator!=(const MoveInstruction& rhs) const { return !operator==(rhs); }
-// LCOV_EXCL_STOP
 
 template <class Archive>
 void MoveInstruction::serialize(Archive& ar, const unsigned int /*version*/)
 {
+  ar& BOOST_SERIALIZATION_BASE_OBJECT_NVP(MoveInstructionInterface);
   ar& boost::serialization::make_nvp("uuid", uuid_);
   ar& boost::serialization::make_nvp("parent_uuid", parent_uuid_);
   ar& boost::serialization::make_nvp("move_type", move_type_);
@@ -278,7 +199,5 @@ void MoveInstruction::serialize(Archive& ar, const unsigned int /*version*/)
 
 }  // namespace tesseract_planning
 
-#include <tesseract_common/serialization.h>
-
 TESSERACT_SERIALIZE_ARCHIVES_INSTANTIATE(tesseract_planning::MoveInstruction)
-TESSERACT_MOVE_INSTRUCTION_EXPORT_IMPLEMENT(tesseract_planning::MoveInstruction)
+BOOST_CLASS_EXPORT_IMPLEMENT(tesseract_planning::MoveInstruction)

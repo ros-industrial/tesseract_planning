@@ -28,77 +28,62 @@
 
 #include <tesseract_common/macros.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
-#include <string>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/export.hpp>
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/nvp.hpp>
-#include <boost/concept_check.hpp>
+#include <boost/stacktrace.hpp>
+#include <boost/core/demangle.hpp>
 TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
-#include <tesseract_common/fwd.h>
-#include <tesseract_common/type_erasure.h>
+#include <string>
+#include <memory>
+#include <typeindex>
+#include <tesseract_common/serialization.h>
 
-/** @brief If shared library, this must go in the header after the class definition */
-#define TESSERACT_WAYPOINT_EXPORT_KEY(N, C)                                                                            \
-  namespace N                                                                                                          \
-  {                                                                                                                    \
-  using C##InstanceBase =                                                                                              \
-      tesseract_common::TypeErasureInstance<C, tesseract_planning::detail_waypoint::WaypointInterface>;                \
-  using C##Instance = tesseract_planning::detail_waypoint::WaypointInstance<C>;                                        \
-  }                                                                                                                    \
-  BOOST_CLASS_EXPORT_KEY(N::C##InstanceBase)                                                                           \
-  BOOST_CLASS_EXPORT_KEY(N::C##Instance)                                                                               \
-  BOOST_CLASS_TRACKING(N::C##InstanceBase, boost::serialization::track_never)                                          \
-  BOOST_CLASS_TRACKING(N::C##Instance, boost::serialization::track_never)
-
-/** @brief If shared library, this must go in the cpp after the implicit instantiation of the serialize function */
-#define TESSERACT_WAYPOINT_EXPORT_IMPLEMENT(inst)                                                                      \
-  BOOST_CLASS_EXPORT_IMPLEMENT(inst##InstanceBase)                                                                     \
-  BOOST_CLASS_EXPORT_IMPLEMENT(inst##Instance)
-
+namespace tesseract_planning
+{
 /**
- * @brief This should not be used within shared libraries use the two above.
- * If not in a shared library it can go in header or cpp
+ * @brief The WaypointInterface class
  */
-#define TESSERACT_WAYPOINT_EXPORT(N, C)                                                                                \
-  TESSERACT_WAYPOINT_EXPORT_KEY(N, C)                                                                                  \
-  TESSERACT_WAYPOINT_EXPORT_IMPLEMENT(N::C)
-
-namespace tesseract_planning::detail_waypoint
+class WaypointInterface
 {
-template <typename T>
-struct WaypointConcept  // NOLINT
-  : boost::Assignable<T>,
-    boost::CopyConstructible<T>,
-    boost::EqualityComparable<T>
-{
-  BOOST_CONCEPT_USAGE(WaypointConcept)
-  {
-    T cp(c);
-    T assign = c;
-    bool eq = (c == cp);
-    bool neq = (c != cp);
-    UNUSED(assign);
-    UNUSED(eq);
-    UNUSED(neq);
+public:
+  virtual ~WaypointInterface() = default;
 
-    c.setName("name");
-    c.getName();
-    c.print();
-    c.print("prefix_");
-  }
-
-private:
-  T c;
-};
-
-struct WaypointInterface : tesseract_common::TypeErasureInterface
-{
+  /**
+   * @brief Set the name of the waypoint
+   * @param name The name of the waypoint
+   */
   virtual void setName(const std::string& name) = 0;
+
+  /**
+   * @brief Get the name of the waypoint
+   * @return The name of the waypoint
+   */
   virtual const std::string& getName() const = 0;
 
-  virtual void print(const std::string& prefix) const = 0;
+  /**
+   * @brief Output the contents to std::cout
+   * @param prefix The prefix to add to each variable
+   */
+  virtual void print(const std::string& prefix = "") const = 0;
+
+  /**
+   * @brief Make a deep copy of the object
+   * @return A deep copy
+   */
+  virtual std::unique_ptr<WaypointInterface> clone() const = 0;
+
+  // Operators
+  bool operator==(const WaypointInterface& rhs) const;
+  bool operator!=(const WaypointInterface& rhs) const;
+
+protected:
+  /**
+   * @brief Check if two objects are equal
+   * @param other The other object to compare with
+   * @return True if equal, otherwise false
+   */
+  virtual bool equals(const WaypointInterface& other) const = 0;
 
 private:
   friend class boost::serialization::access;
@@ -106,70 +91,116 @@ private:
   void serialize(Archive& ar, const unsigned int version);  // NOLINT
 };
 
-template <typename T>
-struct WaypointInstance : tesseract_common::TypeErasureInstance<T, WaypointInterface>  // NOLINT
+/**
+ * @brief The WaypointPoly class
+ */
+class WaypointPoly
 {
-  using BaseType = tesseract_common::TypeErasureInstance<T, WaypointInterface>;
-  WaypointInstance() = default;
-  WaypointInstance(const T& x) : BaseType(x) {}
-  WaypointInstance(WaypointInstance&& x) noexcept : BaseType(std::move(x)) {}
+public:
+  WaypointPoly() = default;  // Default constructor
+  WaypointPoly(const WaypointPoly& other);
+  WaypointPoly& operator=(const WaypointPoly& other);
+  WaypointPoly(WaypointPoly&& other) noexcept = default;
+  WaypointPoly& operator=(WaypointPoly&& other) noexcept = default;
 
-  BOOST_CONCEPT_ASSERT((WaypointConcept<T>));
+  WaypointPoly(const WaypointInterface& impl);
 
-  void setName(const std::string& name) final { this->get().setName(name); }
-  const std::string& getName() const final { return this->get().getName(); }
-  void print(const std::string& prefix) const final { this->get().print(prefix); }
-
-  std::unique_ptr<tesseract_common::TypeErasureInterface> clone() const final
-  {
-    return std::make_unique<WaypointInstance<T>>(this->get());
-  }
-
-private:
-  friend class boost::serialization::access;
-  friend struct tesseract_common::Serialization;
-  template <class Archive>
-  void serialize(Archive& ar, const unsigned int /*version*/)  // NOLINT
-  {
-    ar& boost::serialization::make_nvp("base", boost::serialization::base_object<BaseType>(*this));
-  }
-};
-}  // namespace tesseract_planning::detail_waypoint
-
-namespace tesseract_planning
-{
-using WaypointPolyBase =
-    tesseract_common::TypeErasureBase<detail_waypoint::WaypointInterface, detail_waypoint::WaypointInstance>;
-struct WaypointPoly : WaypointPolyBase
-{
-  using WaypointPolyBase::WaypointPolyBase;
-
+  /**
+   * @brief Set the name of the waypoint
+   * @param name The name of the waypoint
+   */
   void setName(const std::string& name);
+
+  /**
+   * @brief Get the name of the waypoint
+   * @return The name of the waypoint
+   */
   const std::string& getName() const;
 
+  /**
+   * @brief Output the contents to std::cout
+   * @param prefix The prefix to add to each variable
+   */
   void print(const std::string& prefix = "") const;
 
+  /**
+   * @brief Get the stored derived type
+   * @return The derived type index
+   */
+  std::type_index getType() const;
+
+  /**
+   * @brief Check if the poly type is null
+   * @return True if null, otherwise false
+   */
+  bool isNull() const;
+
+  /**
+   * @brief Get the waypoint being stored
+   * @return The waypoint
+   * @throws If null
+   */
+  WaypointInterface& getWaypoint();
+  const WaypointInterface& getWaypoint() const;
+
+  /**
+   * @brief Check if object being stored is of type CartesianWaypointPoly
+   * @return True if of type CartesianWaypoint, otherwise false
+   */
   bool isCartesianWaypoint() const;
 
+  /**
+   * @brief Check if object being stored is of type JointWaypointPoly
+   * @return True if of type JointWaypointPoly, otherwise false
+   */
   bool isJointWaypoint() const;
 
+  /**
+   * @brief Check if object being stored is of type StateWaypointPoly
+   * @return True if of type StateWaypointPoly, otherwise false
+   */
   bool isStateWaypoint() const;
 
+  // Type Casting
+  template <typename T>
+  T& as()
+  {
+    if (getType() != typeid(T))
+      throw std::runtime_error("WaypointPoly, tried to cast '" + boost::core::demangle(getType().name()) + "' to '" +
+                               boost::core::demangle(typeid(T).name()) + "'\nBacktrace:\n" +
+                               boost::stacktrace::to_string(boost::stacktrace::stacktrace()) + "\n");
+
+    return *dynamic_cast<T*>(impl_.get());
+  }
+
+  template <typename T>
+  const T& as() const
+  {
+    if (getType() != typeid(T))
+      throw std::runtime_error("WaypointPoly, tried to cast '" + boost::core::demangle(getType().name()) + "' to '" +
+                               boost::core::demangle(typeid(T).name()) + "'\nBacktrace:\n" +
+                               boost::stacktrace::to_string(boost::stacktrace::stacktrace()) + "\n");
+
+    return *dynamic_cast<const T*>(impl_.get());
+  }
+
+  // Operators
+  bool operator==(const WaypointPoly& rhs) const;
+  bool operator!=(const WaypointPoly& rhs) const;
+
 private:
+  std::unique_ptr<WaypointInterface> impl_;
+
   friend class boost::serialization::access;
   friend struct tesseract_common::Serialization;
-
   template <class Archive>
-  void serialize(Archive& ar, const unsigned int /*version*/);  // NOLINT
+  void serialize(Archive& ar, const unsigned int version);  // NOLINT
 };
 
 }  // namespace tesseract_planning
 
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(tesseract_planning::detail_waypoint::WaypointInterface)
-BOOST_CLASS_TRACKING(tesseract_planning::detail_waypoint::WaypointInterface, boost::serialization::track_never)
-
-BOOST_CLASS_EXPORT_KEY(tesseract_planning::WaypointPolyBase)
-BOOST_CLASS_TRACKING(tesseract_planning::WaypointPolyBase, boost::serialization::track_never)
+BOOST_CLASS_EXPORT_KEY(tesseract_planning::WaypointInterface)
+BOOST_CLASS_TRACKING(tesseract_planning::WaypointInterface, boost::serialization::track_never)
 
 BOOST_CLASS_EXPORT_KEY(tesseract_planning::WaypointPoly)
 BOOST_CLASS_TRACKING(tesseract_planning::WaypointPoly, boost::serialization::track_never)

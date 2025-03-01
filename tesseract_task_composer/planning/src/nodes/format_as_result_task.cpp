@@ -10,8 +10,13 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 #include <tesseract_task_composer/core/task_composer_context.h>
 #include <tesseract_task_composer/core/task_composer_data_storage.h>
 #include <tesseract_task_composer/core/task_composer_node_info.h>
+
 #include <tesseract_command_language/composite_instruction.h>
 #include <tesseract_command_language/poly/move_instruction_poly.h>
+#include <tesseract_command_language/poly/waypoint_poly.h>
+#include <tesseract_command_language/poly/cartesian_waypoint_poly.h>
+#include <tesseract_command_language/poly/joint_waypoint_poly.h>
+#include <tesseract_command_language/poly/state_waypoint_poly.h>
 
 namespace tesseract_planning
 {
@@ -79,7 +84,7 @@ TaskComposerNodeInfo FormatAsResultTask::runImpl(TaskComposerContext& context,
       swp.setName(jwp.getName());
       swp.setNames(jwp.getNames());
       swp.setPosition(jwp.getPosition());
-      mi.assignStateWaypoint(swp);
+      mi.getWaypoint() = swp;
     }
 
     output_data_container.emplace_back(ci);
